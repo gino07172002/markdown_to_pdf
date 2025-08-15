@@ -49,3 +49,38 @@
 ## 授權
 
 MIT License
+
+---
+
+# English
+
+## About
+
+A simple frontend tool for converting Markdown to PDF with GitHub-style formatting. This project was developed through multiple iterations with Claude AI assistance, as I'm not very familiar with frontend development.
+
+## Features
+
+- GitHub-flavored Markdown rendering
+- Real-time preview with pagination
+- Adjustable font size
+- Traditional Chinese support
+- Selectable text in PDF output
+- No external PDF libraries required
+
+## Usage
+
+1. Open the HTML file in your browser
+2. Type Markdown content in the left panel
+3. Preview appears instantly on the right
+4. Adjust font size and zoom as needed
+5. Click "下載 PDF" to generate PDF
+
+## Technical Notes
+
+- Uses `marked.js` for Markdown parsing
+- Leverages browser's native print API for PDF generation
+- Pure frontend implementation
+
+## License
+
+MIT License
