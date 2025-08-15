@@ -1,4 +1,4 @@
-# Markdown to PDF 轉換器
+# (AI做的)Markdown to PDF 轉換器
 
 一個簡單的前端工具，可以將 Markdown 轉換成 PDF 檔案。
 
@@ -52,7 +52,7 @@ MIT License
 
 ---
 
-# Markdown to PDF converter ( single front-end only program ) 
+# (AI made) Markdown to PDF converter ( single front-end only program ) 
 
 ## About
 
