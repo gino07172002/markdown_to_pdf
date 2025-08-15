@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdown to PDF 轉換器</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.2/marked.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', '微軟正黑體', sans-serif;
+            background-color: #f5f5f5;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            height: 100vh;
+        }
+
+        .panel {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .panel-header {
+            background: #24292e;
+            color: white;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .control-group label {
+            font-size: 12px;
+            color: #e1e4e8;
+        }
+
+        input, select, button {
+            padding: 5px 8px;
+            border: 1px solid #d1d5da;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        button {
+            background: #28a745;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background: #218838;
+        }
+
+        #markdownInput {
+            width: 100%;
+            height: calc(100vh - 120px);
+            border: none;
+            padding: 20px;
+            font-family: 'Consolas', 'Monaco', '新細明體', monospace;
+            font-size: 14px;
+            resize: none;
+            outline: none;
+            line-height: 1.5;
+        }
+
+        .preview-container {
+            height: calc(100vh - 80px);
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .page-preview {
+            background: white;
+            margin: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            position: relative;
+        }
+
+        .page-content {
+            padding: 40px;
+            min-height: calc(297mm - 80px);
+            width: 210mm;
+            margin: 0 auto;
+            background: white;
+        }
+
+        .page-number {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: #666;
+            font-size: 12px;
+        }
+
+        /* GitHub Markdown 樣式 */
+        .markdown-content {
+            color: #24292e;
+            font-family: 'Segoe UI', 'Microsoft YaHei', '微軟正黑體', sans-serif;
+            line-height: 1.6;
+            word-wrap: break-word;
+        }
+
+        .markdown-content h1, .markdown-content h2, .markdown-content h3, 
+        .markdown-content h4, .markdown-content h5, .markdown-content h6 {
+            margin-top: 24px;
+            margin-bottom: 16px;
+            font-weight: 600;
+            line-height: 1.25;
+            color: #24292e;
+        }
+
+        .markdown-content h1 {
+            font-size: 2em;
+            border-bottom: 1px solid #eaecef;
+            padding-bottom: 10px;
+        }
+
+        .markdown-content h2 {
+            font-size: 1.5em;
+            border-bottom: 1px solid #eaecef;
+            padding-bottom: 8px;
+        }
+
+        .markdown-content h3 { font-size: 1.25em; }
+        .markdown-content h4 { font-size: 1em; }
+        .markdown-content h5 { font-size: 0.875em; }
+        .markdown-content h6 { font-size: 0.85em; color: #6a737d; }
+
+        .markdown-content p {
+            margin-bottom: 16px;
+        }
+
+        .markdown-content ul, .markdown-content ol {
+            margin-bottom: 16px;
+            padding-left: 2em;
+        }
+
+        .markdown-content li {
+            margin-bottom: 0.25em;
+        }
+
+        .markdown-content blockquote {
+            margin: 0 0 16px 0;
+            padding: 0 1em;
+            color: #6a737d;
+            border-left: 4px solid #dfe2e5;
+        }
+
+        .markdown-content code {
+            background-color: rgba(27,31,35,0.05);
+            border-radius: 3px;
+            font-size: 85%;
+            margin: 0;
+            padding: 0.2em 0.4em;
+            font-family: 'Consolas', 'Monaco', '新細明體', monospace;
+        }
+
+        .markdown-content pre {
+            background-color: #f6f8fa;
+            border-radius: 6px;
+            font-size: 85%;
+            line-height: 1.45;
+            overflow: auto;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .markdown-content pre code {
+            background-color: transparent;
+            border: 0;
+            display: inline;
+            line-height: inherit;
+            margin: 0;
+            max-width: auto;
+            overflow: visible;
+            padding: 0;
+            word-wrap: normal;
+        }
+
+        .markdown-content table {
+            border-collapse: collapse;
+            margin-bottom: 16px;
+            width: 100%;
+        }
+
+        .markdown-content table th, .markdown-content table td {
+            border: 1px solid #dfe2e5;
+            padding: 6px 13px;
+            text-align: left;
+        }
+
+        .markdown-content table th {
+            background-color: #f6f8fa;
+            font-weight: 600;
+        }
+
+        .markdown-content hr {
+            background-color: #e1e4e8;
+            border: 0;
+            height: 0.25em;
+            margin: 24px 0;
+            padding: 0;
+        }
+
+        .markdown-content a {
+            color: #0366d6;
+            text-decoration: none;
+        }
+
+        .markdown-content a:hover {
+            text-decoration: underline;
+        }
+
+        .markdown-content img {
+            max-width: 100%;
+            height: auto;
+            margin: 10px 0;
+        }
+
+        .page-break {
+            page-break-before: always;
+            break-before: page;
+        }
+
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            .page-preview, .page-preview * {
+                visibility: visible;
+            }
+            .page-preview {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                box-shadow: none;
+                margin: 0;
+            }
+            .page-number {
+                display: block !important;
+            }
+        }
+
+        @page {
+            size: A4;
+            margin: 0;
+        }
+
+        /* 響應式設計 */
+        @media (max-width: 1200px) {
+            .container {
+                grid-template-columns: 1fr;
+                grid-template-rows: 1fr 1fr;
+            }
+            
+            #markdownInput, .preview-container {
+                height: 50vh;
+            }
+        }
+
+        /* 滾動條樣式 */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="panel">
+            <div class="panel-header">
+                <h3>Markdown 編輯器</h3>
+                <div class="controls">
+                    <div class="control-group">
+                        <label>字體大小:</label>
+                        <input type="range" id="fontSizeSlider" min="8" max="24" value="14" step="1">
+                        <span id="fontSizeValue">14px</span>
+                    </div>
+                </div>
+            </div>
+            <textarea id="markdownInput" placeholder="在此輸入 Markdown 內容...
+
+# 標題範例
+這是一個段落範例。
+
+## 二級標題
+- 項目 1
+- 項目 2
+- 項目 3
+
+### 程式碼範例
+```javascript
+console.log('Hello World!');
+```
+
+**粗體文字** 和 *斜體文字*
+
+> 這是一個引用區塊
+
+| 表格 | 範例 |
+|------|------|
+| 欄位1 | 內容1 |
+| 欄位2 | 內容2 |"></textarea>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">
+                <h3>PDF 預覽</h3>
+                <div class="controls">
+                    <div class="control-group">
+                        <label>頁面縮放:</label>
+                        <select id="zoomLevel">
+                            <option value="0.5">50%</option>
+                            <option value="0.75">75%</option>
+                            <option value="1" selected>100%</option>
+                            <option value="1.25">125%</option>
+                            <option value="1.5">150%</option>
+                        </select>
+                    </div>
+                    <button id="downloadBtn">下載 PDF</button>
+                </div>
+            </div>
+            <div class="preview-container" id="previewContainer">
+                <div class="page-preview" id="pagePreview">
+                    <div class="page-content">
+                        <div class="markdown-content" id="previewContent">
+                            <p>Markdown 預覽將在此顯示...</p>
+                        </div>
+                    </div>
+                    <div class="page-number">第 1 頁</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 初始化 marked 配置
+        marked.setOptions({
+            breaks: true,
+            gfm: true,
+            headerIds: false,
+            mangle: false
+        });
+
+        const markdownInput = document.getElementById('markdownInput');
+        const previewContent = document.getElementById('previewContent');
+        const previewContainer = document.getElementById('previewContainer');
+        const fontSizeSlider = document.getElementById('fontSizeSlider');
+        const fontSizeValue = document.getElementById('fontSizeValue');
+        const zoomLevel = document.getElementById('zoomLevel');
+        const downloadBtn = document.getElementById('downloadBtn');
+
+        // 字體大小控制
+        fontSizeSlider.addEventListener('input', function() {
+            const size = this.value;
+            fontSizeValue.textContent = size + 'px';
+            document.documentElement.style.setProperty('--content-font-size', size + 'px');
+            
+            // 更新預覽內容的字體大小
+            const style = document.createElement('style');
+            style.textContent = `.markdown-content { font-size: ${size}px !important; }`;
+            document.head.appendChild(style);
+            
+            // 重新分頁
+            setTimeout(updatePreview, 100);
+        });
+
+        // 縮放控制
+        zoomLevel.addEventListener('change', function() {
+            const zoom = this.value;
+            const pages = document.querySelectorAll('.page-preview');
+            pages.forEach(page => {
+                page.style.transform = `scale(${zoom})`;
+                page.style.transformOrigin = 'top center';
+                page.style.marginBottom = zoom < 1 ? '20px' : '40px';
+            });
+        });
+
+        // 即時預覽
+        markdownInput.addEventListener('input', debounce(updatePreview, 300));
+
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        function updatePreview() {
+            const markdown = markdownInput.value;
+            const html = marked.parse(markdown);
+            
+            // 創建臨時容器來測量內容高度
+            const tempContainer = document.createElement('div');
+            tempContainer.innerHTML = html;
+            tempContainer.className = 'markdown-content';
+            tempContainer.style.visibility = 'hidden';
+            tempContainer.style.position = 'absolute';
+            tempContainer.style.width = '210mm';
+            tempContainer.style.padding = '40px';
+            tempContainer.style.fontSize = fontSizeSlider.value + 'px';
+            document.body.appendChild(tempContainer);
+
+            // 分頁邏輯
+            const pageHeight = 297 * 3.7795275591; // A4高度轉換為像素 (mm to px)
+            const contentHeight = pageHeight - 160; // 減去上下邊距
+            
+            const pages = splitContentIntoPages(tempContainer, contentHeight);
+            document.body.removeChild(tempContainer);
+
+            // 清空預覽容器並添加新頁面
+            previewContainer.innerHTML = '';
+            
+            pages.forEach((pageContent, index) => {
+                const pageDiv = document.createElement('div');
+                pageDiv.className = 'page-preview';
+                pageDiv.innerHTML = `
+                    <div class="page-content">
+                        <div class="markdown-content">${pageContent}</div>
+                    </div>
+                    <div class="page-number">第 ${index + 1} 頁</div>
+                `;
+                previewContainer.appendChild(pageDiv);
+            });
+
+            // 應用當前縮放
+            const zoom = zoomLevel.value;
+            const pageElements = document.querySelectorAll('.page-preview');
+            pageElements.forEach(page => {
+                page.style.transform = `scale(${zoom})`;
+                page.style.transformOrigin = 'top center';
+                page.style.marginBottom = zoom < 1 ? '20px' : '40px';
+            });
+        }
+
+        function splitContentIntoPages(container, maxHeight) {
+            const pages = [];
+            let currentPage = '';
+            let currentHeight = 0;
+            
+            // 調整最大高度，為頁面邊距和頁碼留出空間
+            const adjustedMaxHeight = maxHeight - 100; // 減少100px為頁碼和額外邊距
+            
+            const elements = Array.from(container.children);
+            
+            for (let element of elements) {
+                const elementHeight = element.offsetHeight;
+                const elementMargin = parseFloat(getComputedStyle(element).marginBottom) || 0;
+                const totalElementHeight = elementHeight + elementMargin;
+                
+                // 如果單個元素就超過頁面高度，需要特殊處理
+                if (totalElementHeight > adjustedMaxHeight) {
+                    // 先保存當前頁面
+                    if (currentPage) {
+                        pages.push(currentPage);
+                        currentPage = '';
+                        currentHeight = 0;
+                    }
+                    
+                    // 嘗試拆分大元素（例如長段落）
+                    if (element.tagName === 'P' && element.textContent.length > 200) {
+                        // 對於很長的段落，嘗試按句子拆分
+                        const sentences = element.textContent.split(/([.!?。！？])/);
+                        let tempP = document.createElement('p');
+                        tempP.className = element.className;
+                        
+                        for (let i = 0; i < sentences.length; i += 2) {
+                            const sentence = sentences[i] + (sentences[i + 1] || '');
+                            const testP = tempP.cloneNode(true);
+                            testP.textContent = tempP.textContent + sentence;
+                            
+                            // 測試高度
+                            container.appendChild(testP);
+                            const testHeight = testP.offsetHeight;
+                            container.removeChild(testP);
+                            
+                            if (testHeight > adjustedMaxHeight && tempP.textContent) {
+                                // 當前頁面放不下，保存並開新頁
+                                pages.push(tempP.outerHTML);
+                                tempP = document.createElement('p');
+                                tempP.className = element.className;
+                                tempP.textContent = sentence;
+                            } else {
+                                tempP.textContent += sentence;
+                            }
+                        }
+                        
+                        if (tempP.textContent) {
+                            currentPage = tempP.outerHTML;
+                            currentHeight = tempP.offsetHeight || 50;
+                        }
+                    } else {
+                        // 對於其他大元素，直接放在新頁面
+                        pages.push(element.outerHTML);
+                    }
+                } else if (currentHeight + totalElementHeight > adjustedMaxHeight) {
+                    // 當前頁面放不下，開新頁面
+                    if (currentPage) {
+                        pages.push(currentPage);
+                    }
+                    currentPage = element.outerHTML;
+                    currentHeight = totalElementHeight;
+                } else {
+                    // 當前頁面還能放下
+                    currentPage += element.outerHTML;
+                    currentHeight += totalElementHeight;
+                }
+            }
+            
+            // 添加最後一頁
+            if (currentPage) {
+                pages.push(currentPage);
+            }
+            
+            // 如果沒有內容，至少返回一個空頁面
+            if (pages.length === 0) {
+                pages.push('<p>請在左側輸入 Markdown 內容...</p>');
+            }
+            
+            return pages;
+        }
+
+        // 下載PDF功能
+        downloadBtn.addEventListener('click', function() {
+            // 創建專用的打印內容
+            const pages = document.querySelectorAll('.page-preview');
+            let printContent = '';
+            
+            pages.forEach((page, index) => {
+                const pageContent = page.querySelector('.page-content').innerHTML;
+                const pageNum = index + 1;
+                
+                printContent += `
+                    <div class="print-page" data-page="${pageNum}">
+                        <div class="print-page-content">
+                            ${pageContent}
+                        </div>
+                        <div class="print-page-number">第 ${pageNum} 頁</div>
+                    </div>
+                `;
+            });
+            
+            // 創建完整的打印樣式
+            const printStyles = `
+                <style>
+                    @page { 
+                        size: A4; 
+                        margin: 0; 
+                    }
+                    
+                    * {
+                        -webkit-print-color-adjust: exact !important;
+                        color-adjust: exact !important;
+                    }
+                    
+                    body { 
+                        font-family: 'Segoe UI', 'Microsoft YaHei', '微軟正黑體', sans-serif;
+                        margin: 0; 
+                        padding: 0; 
+                        font-size: ${fontSizeSlider.value}px;
+                        line-height: 1.6;
+                    }
+                    
+                    .print-page {
+                        width: 210mm;
+                        height: 297mm;
+                        page-break-after: always;
+                        page-break-inside: avoid;
+                        position: relative;
+                        background: white;
+                        overflow: hidden;
+                        display: block;
+                    }
+                    
+                    .print-page:last-child {
+                        page-break-after: avoid;
+                    }
+                    
+                    .print-page-content { 
+                        padding: 15mm;
+                        width: 210mm;
+                        height: 267mm;
+                        box-sizing: border-box;
+                        overflow: hidden;
+                    }
+                    
+                    .print-page-number { 
+                        position: absolute; 
+                        bottom: 10mm; 
+                        right: 15mm; 
+                        color: #666; 
+                        font-size: 10pt; 
+                    }
+                    
+                    /* GitHub Markdown 樣式 */
+                    .markdown-content {
+                        color: #24292e;
+                        font-family: 'Segoe UI', 'Microsoft YaHei', '微軟正黑體', sans-serif;
+                        line-height: 1.6;
+                        word-wrap: break-word;
+                    }
+
+                    .markdown-content h1, .markdown-content h2, .markdown-content h3, 
+                    .markdown-content h4, .markdown-content h5, .markdown-content h6 {
+                        margin-top: 24px;
+                        margin-bottom: 16px;
+                        font-weight: 600;
+                        line-height: 1.25;
+                        color: #24292e;
+                        page-break-after: avoid;
+                    }
+
+                    .markdown-content h1 {
+                        font-size: 2em;
+                        border-bottom: 1px solid #eaecef;
+                        padding-bottom: 10px;
+                    }
+
+                    .markdown-content h2 {
+                        font-size: 1.5em;
+                        border-bottom: 1px solid #eaecef;
+                        padding-bottom: 8px;
+                    }
+
+                    .markdown-content h3 { font-size: 1.25em; }
+                    .markdown-content h4 { font-size: 1em; }
+                    .markdown-content h5 { font-size: 0.875em; }
+                    .markdown-content h6 { font-size: 0.85em; color: #6a737d; }
+
+                    .markdown-content p {
+                        margin-bottom: 16px;
+                        orphans: 3;
+                        widows: 3;
+                    }
+
+                    .markdown-content ul, .markdown-content ol {
+                        margin-bottom: 16px;
+                        padding-left: 2em;
+                        page-break-inside: avoid;
+                    }
+
+                    .markdown-content li {
+                        margin-bottom: 0.25em;
+                    }
+
+                    .markdown-content blockquote {
+                        margin: 0 0 16px 0;
+                        padding: 0 1em;
+                        color: #6a737d;
+                        border-left: 4px solid #dfe2e5;
+                        page-break-inside: avoid;
+                    }
+
+                    .markdown-content code {
+                        background-color: rgba(27,31,35,0.05);
+                        border-radius: 3px;
+                        font-size: 85%;
+                        margin: 0;
+                        padding: 0.2em 0.4em;
+                        font-family: 'Consolas', 'Monaco', '新細明體', monospace;
+                    }
+
+                    .markdown-content pre {
+                        background-color: #f6f8fa;
+                        border-radius: 6px;
+                        font-size: 85%;
+                        line-height: 1.45;
+                        overflow: auto;
+                        padding: 16px;
+                        margin-bottom: 16px;
+                        page-break-inside: avoid;
+                    }
+
+                    .markdown-content pre code {
+                        background-color: transparent;
+                        border: 0;
+                        display: inline;
+                        line-height: inherit;
+                        margin: 0;
+                        max-width: auto;
+                        overflow: visible;
+                        padding: 0;
+                        word-wrap: normal;
+                    }
+
+                    .markdown-content table {
+                        border-collapse: collapse;
+                        margin-bottom: 16px;
+                        width: 100%;
+                        page-break-inside: avoid;
+                    }
+
+                    .markdown-content table th, .markdown-content table td {
+                        border: 1px solid #dfe2e5;
+                        padding: 6px 13px;
+                        text-align: left;
+                    }
+
+                    .markdown-content table th {
+                        background-color: #f6f8fa;
+                        font-weight: 600;
+                    }
+
+                    .markdown-content hr {
+                        background-color: #e1e4e8;
+                        border: 0;
+                        height: 0.25em;
+                        margin: 24px 0;
+                        padding: 0;
+                    }
+
+                    .markdown-content a {
+                        color: #0366d6;
+                        text-decoration: none;
+                    }
+
+                    .markdown-content a:hover {
+                        text-decoration: underline;
+                    }
+
+                    .markdown-content img {
+                        max-width: 100%;
+                        height: auto;
+                        margin: 10px 0;
+                        page-break-inside: avoid;
+                    }
+                </style>
+            `;
+            
+            // 創建新窗口用於打印
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html lang="zh-TW">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>Markdown PDF Export</title>
+                    ${printStyles}
+                </head>
+                <body>
+                    ${printContent}
+                </body>
+                </html>
+            `);
+            
+            printWindow.document.close();
+            printWindow.focus();
+            
+            // 等待內容加載完成後執行打印
+            setTimeout(() => {
+                printWindow.print();
+                // 打印後關閉窗口（用戶可以選擇取消）
+                setTimeout(() => {
+                    printWindow.close();
+                }, 1000);
+            }, 1000);
+        });
+
+        // 初始化預覽
+        updatePreview();
+
+        // 處理拖拽上傳
+        markdownInput.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            this.style.backgroundColor = '#f0f0f0';
+        });
+
+        markdownInput.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            this.style.backgroundColor = '';
+        });
+
+        markdownInput.addEventListener('drop', function(e) {
+            e.preventDefault();
+            this.style.backgroundColor = '';
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                const file = files[0];
+                if (file.type === 'text/markdown' || file.name.endsWith('.md')) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        markdownInput.value = e.target.result;
+                        updatePreview();
+                    };
+                    reader.readAsText(file);
+                }
+            }
+        });
+
+        // 鍵盤快捷鍵
+        document.addEventListener('keydown', function(e) {
+            // Ctrl+S 下載PDF
+            if (e.ctrlKey && e.key === 's') {
+                e.preventDefault();
+                downloadBtn.click();
+            }
+            
+            // Ctrl+P 預覽/打印
+            if (e.ctrlKey && e.key === 'p') {
+                e.preventDefault();
+                downloadBtn.click();
+            }
+        });
+    </script>
+</body>
+</html>
