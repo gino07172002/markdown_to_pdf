@@ -52,7 +52,7 @@ MIT License
 
 ---
 
-# English
+# Markdown to PDF converter ( single front-end only program ) 
 
 ## About
 
